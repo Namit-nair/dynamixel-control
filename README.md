@@ -1,4 +1,5 @@
-﻿# Joint-Stiffness
+﻿# Dynamixel Servo Control
+
 
 Single Dynamixel motor control and telemetry interface built using PySide6 and Dynamixel SDK for joint stiffness experimentation and actuator characterization.
 
