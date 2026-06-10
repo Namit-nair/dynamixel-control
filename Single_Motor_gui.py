@@ -25,9 +25,9 @@ from PySide6.QtWidgets import (
 )
 
 # Edit these 3 values for a new laptop/setup.
-PORT_NAME = "COM4"
+PORT_NAME = "/dev/ttyUSB0"
 BAUDRATE = 57600
-DXL_ID = 13
+DXL_ID = 15
 PROTOCOL_VERSION = 2.0
 
 TICKS_PER_REV = 4096
@@ -498,6 +498,7 @@ def main():
 
     ok, err = init_hardware(PORT_NAME, BAUDRATE, PROTOCOL_VERSION, DXL_ID)
     if not ok:
+        print(f"HARDWARE ERROR: {err}")
         QMessageBox.critical(None, "Hardware Error", err)
         return 1
 
