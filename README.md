@@ -1,206 +1,90 @@
-﻿# Dynamixel Servo Control
+# Dynamixel Control Center
 
+A general-purpose PySide6 GUI for Protocol 2.0 (X-series) Dynamixel motors: connect to any port/baud, **scan the bus for connected motors, switch operating mode, and change ID or baud rate persistently** -- the everyday tasks Dynamixel Wizard is normally opened for -- plus live telemetry, jog/velocity/current control, an auto step routine, a live graph, and CSV logging.
 
-Single Dynamixel motor control and telemetry interface built using PySide6 and Dynamixel SDK for joint stiffness experimentation and actuator characterization.
+Built for joint stiffness experimentation and actuator characterization, but not hardcoded to one motor, port, or mode.
 
 ---
 
 ## Features
 
-- Real-time Dynamixel position control
-- GUI-based motor interface
-- Torque ON / OFF controls
-- Incremental left-right stepping
-- Zero position reset
-- Live telemetry monitoring
-- Real-time graph visualization
-- Automated oscillatory step routine
-- CSV telemetry logging
-- 20 Hz telemetry update loop
+- **No Dynamixel Wizard needed for basic setup:**
+  - Port picker (auto-detected, refreshable) + baud rate selector, connect/disconnect on demand
+  - **Scan Bus** -- broadcast-pings IDs 0-252 and lists every motor that responds
+  - Per-motor **operating mode switch** (Current, Velocity, Position, Extended Position, Current-based Position, PWM) applied live
+  - Per-motor **ID change** and **baud rate change**, written directly to EEPROM
+- Multiple motors at once -- add as many panels as you have motors on the bus
+- Mode-aware controls: jog buttons in position modes, a goal spinbox in velocity/current/PWM modes
+- Torque enable / disable per motor
+- Live telemetry: position, angle, velocity, current, voltage, temperature (~20 Hz)
+- Real-time graph window, toggle any combination of telemetry streams
+- Automated bidirectional step routine (stiffness/hysteresis characterization) with CSV logging
 
 ---
 
 ## Hardware
 
-- Dynamixel Servo Motor
+- Dynamixel Servo Motor(s), Protocol 2.0 / X-series control table
 - USB2Dynamixel / U2D2 Interface
 - Windows PC
 - Python 3.11+
 
----
-
 ## Software Stack
 
-- Python
-- PySide6
-- Dynamixel SDK
-- Matplotlib
-
----
-
-## Telemetry Parameters
-
-The software continuously reads:
-
-- Position (revolutions)
-- Angular position (degrees)
-- Velocity (RPM)
-- Current (mA)
-- Voltage (V)
-- Temperature (°C)
-
-Telemetry is updated at approximately 20 Hz.
-
----
-
-## GUI Overview
-
-### Main Motor Panel
-
-Provides:
-
-- LEFT / RIGHT incremental motion
-- Zero calibration
-- Torque enable / disable
-- Live telemetry display
-- Goal position display
-
----
-
-### Graph Window
-
-Real-time plotting interface for:
-
-- Position
-- Goal Position
-- Velocity
-- Current
-- Voltage
-- Temperature
-
-Multiple telemetry streams can be toggled on/off dynamically.
-
----
-
-### Auto Step Routine
-
-Automated bidirectional stepping routine used for:
-
-- stiffness characterization
-- hysteresis observation
-- actuator response analysis
-- repeated loading experiments
-
-User configurable:
-
-- Step size (rev)
-- Hold duration (seconds)
-
-The routine alternates direction automatically.
-
----
-
-## CSV Logging
-
-During automated routines, telemetry data is logged into timestamped CSV files.
-
-Logged parameters:
-
-```text
-timestamp
-position_rev
-goal_rev
-velocity_rpm
-current_mA
-voltage_V
-temperature_C
-```
-
-Example filename:
-
-```text
-motor_routine_20260522_143015.csv
-```
+Python, PySide6, Dynamixel SDK, pyserial, Matplotlib.
 
 ---
 
 ## Installation
 
-Clone the repository:
-
 ```bash
-git clone https://github.com/Namit-nair/Joint-Stiffness.git
-cd Joint-Stiffness
-```
-
-Create virtual environment:
-
-```bash
+git clone https://github.com/Namit-nair/dynamixel-control.git
+cd dynamixel-control
 python -m venv .venv
-```
-
-Activate environment:
-
-### Windows
-
-```bash
-.venv\Scripts\activate
-```
-
-Install dependencies:
-
-```bash
+.venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 ```
 
----
-
-## Running the Application
-
-Run the GUI:
+## Running
 
 ```bash
-python Single_Motor_gui.py
+python dynamixel_control_center.py
 ```
+
+There is nothing to edit before running -- port, baud, ID, and operating mode are all chosen from the GUI.
 
 ---
 
-## Configuration
+## Typical workflow
 
-The following parameters can be modified directly in the script:
-
-```python
-PORT_NAME = "COM4"
-BAUDRATE = 57600
-DXL_ID = 13
-```
-
-Motor limits:
-
-```python
-MAX_REV = 10.0
-MIN_REV = -10.0
-STEP_REV = 0.02
-```
+1. Plug in the U2D2, hit **Refresh**, pick the port, pick a baud rate, **CONNECT**.
+2. **SCAN BUS** -- select the motor(s) you want from the results, or type an ID directly if you already know it.
+3. Each motor gets its own panel: check telemetry, pick an **operating mode** and hit Apply, jog it or set a goal value, toggle torque.
+4. New motor out of the box, or need a different ID to avoid a bus conflict? Use the **Identity** section on its panel -- Change ID / Change Baud -- no separate tool required.
+5. For characterization runs: set step size + hold time in **Auto Step Routine**, mark a panel active ("USE FOR ROUTINE / GRAPH"), hit Start. Telemetry streams to a timestamped CSV and the graph window.
 
 ---
 
-## Dynamixel Operating Mode
+## Module layout
 
-The motor is configured in:
+- `dxl_manager.py` -- hardware-facing `DynamixelBus` class (connect, scan, mode/ID/baud writes, telemetry reads). No Qt dependency; reusable from a script or a different UI.
+- `dynamixel_control_center.py` -- the PySide6 GUI described above. Run this.
+- `Keyboard_Motor_gui.py` -- an older, simpler keyboard-teleop variant with the port/baud/ID still hardcoded at the top of the file. Kept for reference; not part of the dynamic workflow above.
+
+---
+
+## CSV Logging
+
+Auto Step Routine runs log to `motor_<id>_routine_<timestamp>.csv`:
 
 ```text
-Extended Position Control Mode
+timestamp, position_rev, velocity_rpm, current_mA, voltage_V, temperature_C
 ```
 
-Using:
+---
 
-```python
-ADDR_OPERATING_MODE = 11
-```
+## Safety notes
 
-Mode value:
-
-```python
-4
-```
+- Changing **operating mode**, **ID**, or **baud rate** writes to EEPROM and requires torque to be off; the app disables torque automatically before writing.
+- Changing a motor's **baud rate** takes effect on the motor immediately -- it will stop responding at the bus's current baud until you reconnect at the new one.
+- Changing a motor's **ID** means the old ID stops responding; rescan the bus to find it under the new one.
